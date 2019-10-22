@@ -23,6 +23,7 @@ def flatten(arglist):
 
 
 def infinite_box(shape):
+    shape = np.atleast_1d(shape)
     return gym.spaces.Box(-np.inf, np.inf, shape=shape, dtype=np.float32)
 
 
@@ -77,7 +78,8 @@ class BaseEnv(gym.Env):
 
         t_span = t + self.t_span
         func = self.ode_wrapper(self.derivs)
-        ode_hist = odeint(func, xs, t_span, args=(action,), tfirst=True)
+        ode_hist = odeint(
+            func, xs, t_span, args=(action,), tfirst=True)
 
         packed_hist = [self.pack_state(_) for _ in ode_hist]
         next_states = packed_hist[-1]
@@ -122,14 +124,10 @@ class BaseEnv(gym.Env):
 
 
 class BaseSystem:
-    def __init__(self, name, initial_state, control_size=0, deriv=None):
+    def __init__(self, name, initial_state):
         self.name = name
         self.initial_state = initial_state
         self.state_shape = self.initial_state.shape
-        self.control_size = control_size
-
-        if callable(deriv):
-            self.deriv = deriv
 
     @property
     def initial_state(self):
@@ -140,7 +138,7 @@ class BaseSystem:
         self._initial_state = np.asarray(val)
 
     def deriv(self):
-        raise NotImplementedError("deriv method is not defined in the system.")
+        raise NotImplementedError
 
     def reset(self):
         return self.initial_state
