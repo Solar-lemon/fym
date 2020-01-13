@@ -5,9 +5,17 @@ from numpy import sin, cos
 
 from fym.core import BaseSystem
 
+'''
+Notation convention : Robotics, 1-2-3 Euler angle
+Reference :
+J. Grauer - 2012 - Modeling and System Identification of An Ornithopter Flight Dynamics Model
+M. Bhatia - 2012 - LQR Controller for Stabilization of Flapping Wing MAVs in Gust Environments
+'''
+
 class Ornithopter(BaseSystem):
     def __init__(self, initial_state=[0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0]):
         super().__init__(initial_state)
+        self.g = 9.81     # gravitational acceleration [m/s^2]
         self.mass = 0.45  # total mass [kg]
         self.J_x = 7.5e-3 # inertia of moment J_xx [kg*m^2]
         self.J_y = 12e-3  # inertia of moment J_yy [kg*m^2]
@@ -92,11 +100,19 @@ class Ornithopter(BaseSystem):
         F = np.zeros(3)
         tau = np.zeros(3)
         V = self.state[3:6]
+        phi = self.state[6]
+        theta = self.state[7]
+        eta = self.state[8]
         Q = self.rho*np.linalg.norm(V)**2/2
+
+        R_x = np.array([[1, 0, 0], [0, np.cos(phi), -np.sin(phi)], [0, np.sin(phi), np.cos(phi)]])
+        R_y = np.array([[np.cos(theta), 0, np.sin(theta)], [0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]])
+        R_z = np.array([[np.cos(eta), -np.sin(eta), 0], [np.sin(eta), np.cos(eta), 0], [0, 0, 1]])
+        F_g = R_z.dot(R_y).dot(R_x).dot(np.array([0, 0, self.mass*self.g]))
         alp_T, bet_T = self.alpbet_tail(U_new)
         C_F_T, C_tau_T = self.aero_tail(alp_T, bet_T)
         C_F_W, C_tau_W = self.aero_wing(U_new)
-        F = C_F_T*Q*self.S_t + C_F_W*Q*self.S_w
+        F = C_F_T*Q*self.S_t + C_F_W*Q*self.S_w + F_g
         tau = C_tau_T*Q*self.S_t*np.array([self.b_t, self.c_t, self.b_t]) + C_tau_W*Q*self.S_t*np.array([self.b_w, self.c_w, self.b_w])
         return F, tau
 
